@@ -118,14 +118,18 @@ for (i = 0; i < 5; i++) {
 }
 pile = shuffle(pile)
 
+draw_button = new Button(
+	Point(width / 3, (height / 3) + 6),"D",
+	function (){players[current_player].push(new Card())}
+)
 
-function Card(pos) {
-	this.pos = Point(width / 3, (height / 3) + 16)
-	this.target_pos = pos
+function Card() {
+	this.pos = add_Point(draw_button.pos,Point(0,26))
+	this.target_pos = Point(0,0)
 	this.siz = Point(8 * 3, 8 * 4)
 	this.value = pile.pop()
 	this.update = function (index) {
-		if (Collision.point_rect(mouse.pos, this) && (mouse.hovering == false || mouse.hovering == index)) { // if the mouse is holding this card
+		if (Collision.point_rect(mouse.pos, this) && (mouse.hovering == null || mouse.hovering == index)) { // if the mouse is over
 			mouse.hovering = index
 
 			if (mouse.l) {
@@ -134,16 +138,16 @@ function Card(pos) {
 				if (Collision.rect_rect(this, stack_button)) {
 					stack_button.add(this.value)
 				}
-				this.pos.y = this.target_pos.y - 8
+				this.pos.y = this.target_pos.y - 16
 			}
 		} else {
 			this.pos = lerp_Point(this.pos, this.target_pos, 0.07)
 		}
 	}
 
-	this.draw = function () {
-		map(30, 0, 3, 4, this.pos.x, this.pos.y, 0)
-		font(
+	this.draw = function (show) {
+		map(show ? 30 : 33, 0, 3, 4, this.pos.x, this.pos.y, 2)
+		if (show) font(
 			this.value[0] + "\n" + this.value[1],
 			this.pos.x + 5, this.pos.y + 4,
 			0, 5, 8, false, 1
@@ -160,19 +164,31 @@ function align_cards(array, pos) {
 	}
 }
 
-cards = []
-for (i = 0; i < 6; i++) {
-	cards.push(
-		new Card(Point(28 + (i * 16), 101))
-	)
+players = [ // cards held by each player
+	[],
+	[]
+]
+current_player = 1
+players[current_player] = []
+for (j = 0; j < players.length; j++) {
+	for (i = 0; i < 6; i++) {
+		players[j].push(
+			new Card(Point(28 + (i * 16), 101))
+		)
+	}
 }
 
 stack = [ // the pile which players add to
 	pile.pop()
 ]
+// the stack can't start with whot
+while (stack[0][0] == "W") {
+	pile.unshift(stack.pop())
+	stack.push(pile.pop())
+}
 remove_value = null
 stack_button = {
-	pos: Point((width * (2 / 3)) - 4, (height / 3) - 6),
+	pos: Point((width * (2 / 3)) - 4, (height / 3)),
 	siz: Point(8 * 3, 8 * 4),
 	add: function (value) {
 		top_card = stack[stack.length - 1]
@@ -186,16 +202,16 @@ stack_button = {
 	},
 	update: function () {
 		if (remove_value) {
-			for (i = 0; i < cards.length; i++) {
-				if ((cards[i].value[0] == remove_value[0]) && (cards[i].value[1] == remove_value[1])) {
-					cards = remove(cards, i)
+			for (i = 0; i < players[current_player].length; i++) {
+				if ((players[current_player][i].value[0] == remove_value[0]) && (players[current_player][i].value[1] == remove_value[1])) {
+					players[current_player] = remove(players[current_player], i)
 				}
 			}
 		}
 		remove_value = null // reset the value for the next frame
 	},
 	draw: function () {
-		map(30, 0, 3, 4, this.pos.x, this.pos.y, 0)
+		map(30, 0, 3, 4, this.pos.x, this.pos.y, 2)
 		font(
 			stack[stack.length - 1][0] + "\n" + stack[stack.length - 1][1],
 			this.pos.x + 5, this.pos.y + 4
@@ -231,16 +247,9 @@ function Button(pos, label, callback) {
 	}
 }
 
-draw_button = new Button(
-	Point(width / 3, height / 3),
-	"D",
-	function () {
-		cards.push(new Card(Point(45 + (cards.length * 16), 77 + cards.length)))
-	}
-)
 
 mouse = {
-	fetch: mouse, // [x,y,l,m,r,sx,sy]
+	fetch: mouse,
 	image: 9,
 	pos: Point(),
 	l: false,
@@ -249,13 +258,14 @@ mouse = {
 	hovering: false,
 	scroll: Point(),
 	update: function () {
-		data = this.fetch()
+		data = this.fetch() // [x,y,l,m,r,sx,sy]
 		this.pos = Point(data[0], data[1])
 		this.l = data[2]
 		this.m = data[3]
 		this.r = data[4]
-		this.hovering = false
 		this.scroll = Point(data[5], data[6])
+
+		this.hovering = null
 	},
 	image_update: function () {
 		if (!this.image) this.image = (this.hovering && this.l) ? 10 : 9
@@ -272,19 +282,26 @@ function TIC() {
 	mouse.update()
 	draw_button.update()
 	// update all cards
-	for (i = 0; i < cards.length; i++) {
-		cards[i].update(i)
+	for (j = 0; j < players.length; j++) {
+		for (i = 0; i < players[j].length; i++) {
+			players[j][i].update(i)
+		}
 	}
+
 	stack_button.update()
-	align_cards(cards, Point(32, 102))
+	align_cards(players[0], Point(32, 100))
+	align_cards(players[1], Point(88, 4))
 
 	mouse.image_update()
-	map(33, 0, 3, 4, draw_button.pos.x - 4, draw_button.pos.y - 6, 0)
+	map(33, 0, 3, 4, draw_button.pos.x - 4, draw_button.pos.y - 6, 2)
 	draw_button.draw()
 	stack_button.draw()
 	//draw all cards
-	for (i = 0; i < cards.length; i++) {
-		cards[i].draw()
+	for (j = 0; j < players.length; j++) {
+		for (i = 0; i < players[j].length; i++) {
+			players[j][i].draw(j == current_player)
+		}
 	}
+
 	t++
 }
