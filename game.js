@@ -119,16 +119,20 @@ for (i = 0; i < 5; i++) {
 pile = shuffle(pile)
 
 draw_button = new Button(
-	Point(width / 3, (height / 3) + 6),"D",
-	function (){players[current_player].push(new Card())}
+	Point(width / 3, (height / 3) + 6), "D",
+			function () {players[current_player].push(new Card());change_player = true}
 )
 
 function Card() {
-	this.pos = add_Point(draw_button.pos,Point(0,26))
-	this.target_pos = Point(0,0)
+	this.pos = add_Point(draw_button.pos, Point(0, 26))
+	this.target_pos = Point(0, 0)
 	this.siz = Point(8 * 3, 8 * 4)
 	this.value = pile.pop()
-	this.update = function (index) {
+	this.update = function (index,active) {
+		if (active ==  false) {
+			this.pos = lerp_Point(this.pos, this.target_pos, 0.07)
+			return
+		}
 		if (Collision.point_rect(mouse.pos, this) && (mouse.hovering == null || mouse.hovering == index)) { // if the mouse is over
 			mouse.hovering = index
 
@@ -169,11 +173,12 @@ players = [ // cards held by each player
 	[]
 ]
 current_player = 1
-players[current_player] = []
+change_player = false
+
 for (j = 0; j < players.length; j++) {
 	for (i = 0; i < 6; i++) {
 		players[j].push(
-			new Card(Point(28 + (i * 16), 101))
+			new Card()
 		)
 	}
 }
@@ -195,6 +200,7 @@ stack_button = {
 		if (value[0] == top_card[0] || value[1] == top_card[1]) {
 			stack.push(value)
 			remove_value = value // value of card to be removed
+			change_player = true
 			return true
 		} else {
 			return false
@@ -284,13 +290,17 @@ function TIC() {
 	// update all cards
 	for (j = 0; j < players.length; j++) {
 		for (i = 0; i < players[j].length; i++) {
-			players[j][i].update(i)
+			players[j][i].update(i,j==current_player)
 		}
 	}
 
 	stack_button.update()
-	align_cards(players[0], Point(32, 100))
-	align_cards(players[1], Point(88, 4))
+	align_cards(players[0], Point(32, 102))
+	align_cards(players[1], Point(94, 5))
+	if (change_player) {
+		current_player = (current_player + 1) % players.length
+		change_player = false
+	}
 
 	mouse.image_update()
 	map(33, 0, 3, 4, draw_button.pos.x - 4, draw_button.pos.y - 6, 2)
