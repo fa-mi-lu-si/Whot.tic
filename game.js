@@ -120,20 +120,22 @@ pile = shuffle(pile)
 
 
 function Card(pos) {
-	this.pos = pos
+	this.pos = Point(width / 3, (height / 3) + 16)
 	this.target_pos = pos
 	this.siz = Point(8 * 3, 8 * 4)
 	this.value = pile.pop()
-	this.hover = false
-	this.update = function () {
-		this.hover = Collision.point_rect(mouse.pos, this)
-		if (this.hover && mouse.l) { // if the mouse is holding this card
-			this.pos = add_Point(mouse.pos, Point(-8, -8))
-		} else if (this.hover) {
-			if (Collision.rect_rect(this, stack_button)) {
-				stack_button.add(this.value)
+	this.update = function (index) {
+		if (Collision.point_rect(mouse.pos, this) && (mouse.hovering == false || mouse.hovering == index)) { // if the mouse is holding this card
+			mouse.hovering = index
+
+			if (mouse.l) {
+				this.pos = add_Point(mouse.pos, Point(-8, -8))
+			} else {
+				if (Collision.rect_rect(this, stack_button)) {
+					stack_button.add(this.value)
+				}
+				this.pos.y = this.target_pos.y - 8
 			}
-			this.pos.y = this.target_pos.y - 8
 		} else {
 			this.pos = lerp_Point(this.pos, this.target_pos, 0.07)
 		}
@@ -148,13 +150,20 @@ function Card(pos) {
 		)
 	}
 }
-
-start_cards_length = 6 // the number of cards each player starts with
+function align_cards(array, pos) {
+	w = 96
+	for (i = 0; i < array.length; i++) {
+		array[i].target_pos = Point(
+			pos.x + ((i / array.length) * w),
+			pos.y
+		)
+	}
+}
 
 cards = []
-for (i = 0; i < start_cards_length; i++) {
+for (i = 0; i < 6; i++) {
 	cards.push(
-		new Card(Point(45 + (i * 16), 77 + i))
+		new Card(Point(28 + (i * 16), 101))
 	)
 }
 
@@ -201,6 +210,7 @@ function Button(pos, label, callback) {
 	this.siz = Point(8 * 2, 8 * 2)
 	this.pressed = false
 	this.update = function () {
+		if (Collision.point_rect(mouse.pos, this)) mouse.image = 8
 		this.just_pressed = (this.pressed == false && Collision.point_rect(mouse.pos, this) && mouse.l)
 
 		if (this.just_pressed) {
@@ -208,7 +218,10 @@ function Button(pos, label, callback) {
 			this.pressed = true
 		}
 
-		if (this.pressed && (mouse.l == false)) { this.pressed = false }
+		if (this.pressed) {
+			mouse.image = 7
+			if (mouse.l == false) this.pressed = false
+		}
 	}
 	this.draw = function () {
 		spr(this.pressed ? 94 : 92, this.pos.x, this.pos.y, 2, 1, 0, 0, 2, 2)
@@ -233,6 +246,7 @@ mouse = {
 	l: false,
 	m: false,
 	r: false,
+	hovering: false,
 	scroll: Point(),
 	update: function () {
 		data = this.fetch()
@@ -240,9 +254,13 @@ mouse = {
 		this.l = data[2]
 		this.m = data[3]
 		this.r = data[4]
+		this.hovering = false
 		this.scroll = Point(data[5], data[6])
-		this.image == this.l ? 10 : 9
+	},
+	image_update: function () {
+		if (!this.image) this.image = (this.hovering && this.l) ? 10 : 9
 		poke(0x03ffb, this.image)
+		this.image = false // reset to default
 	}
 }
 
@@ -255,10 +273,12 @@ function TIC() {
 	draw_button.update()
 	// update all cards
 	for (i = 0; i < cards.length; i++) {
-		cards[i].update()
+		cards[i].update(i)
 	}
 	stack_button.update()
+	align_cards(cards, Point(32, 102))
 
+	mouse.image_update()
 	map(33, 0, 3, 4, draw_button.pos.x - 4, draw_button.pos.y - 6, 0)
 	draw_button.draw()
 	stack_button.draw()
