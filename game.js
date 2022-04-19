@@ -89,14 +89,12 @@ function Button(pos, label, callback) {
 
 		hover = Collision.pointRect(mouse.pos, this) && !mouse.hovering
 		if (hover) mouse.image = 8
-		
-		this.justPressed = (
+
+		if (
 			this.pressed == false
 			&& mouse.l
 			&& hover
-		)
-
-		if (this.justPressed) {
+		) {
 			this.callback()
 			this.pressed = true
 		}
@@ -255,21 +253,30 @@ while (stack[0][0] == "W") {
 	pile.unshift(stack.pop())
 	stack.push(pile.pop())
 }
+
 removeValue = null
 stackButton = {
 	pos: Point((width * (2 / 3)) - 4, (height / 3) + 15),
 	siz: Point(8 * 3, 8 * 4),
+	demand : "",
 	add: function (value) {
 		if (whotMenu.active) return
 		
 		if (value[0] == "W") {
 			whotMenu.active = true
+			this.demand = ""
 			removeValue = value // value of card to be removed
+			return
 		}
+
 		topCard = stack[stack.length - 1]
-		if (value[0] == topCard[0] || value[1] == topCard[1]) {
+		if (
+			value[0] == (this.demand || topCard[0])
+			|| (!this.demand && (value[1] == topCard[1]))
+		) {
 			stack.push(value)
 			removeValue = value // value of card to be removed
+			this.demand = ""
 			changePlayer = true
 		}
 	},
@@ -307,6 +314,15 @@ whotMenu = {
 	},
 	active : false,
 	buttons : [],
+	buttonFunction : function (suite) {
+		return function () {
+			stackButton.demand = suite
+		}
+	},
+	closeButton : new Button(Point(),"X",function () {
+		whotMenu.active = false
+		changePlayer = true
+	}),
 	update : function () {
 		this.titleBar.pos = this.pos
 		if (Collision.pointRect(mouse.pos,this.titleBar)) {
@@ -318,15 +334,24 @@ whotMenu = {
 			mouse.image = 10
 		}
 
-		for (i in this.buttons) {
-			this.buttons[i].pos = addPoint(this.pos,Point(6 + 17*i,12))
-			this.buttons[i].update()
+		if (stackButton.demand) {
+			this.closeButton.pos = addPoint(this.pos,Point(23,12))
+			this.closeButton.update()
+		} else {
+			for (i in this.buttons) {
+				this.buttons[i].pos = addPoint(this.pos,Point(6 + 17*i,12))
+				this.buttons[i].update()
+			}
 		}
 	},
 	draw : function () {
 		map(31,5,12,6,this.pos.x,this.pos.y)
-		for (i in this.buttons) {
-			this.buttons[i].draw()
+		if (stackButton.demand) {
+			this.closeButton.draw()
+		} else {
+			for (i in this.buttons) {
+				this.buttons[i].draw()
+			}
 		}
 	}
 }
@@ -334,9 +359,7 @@ for (i in suites) {
 	whotMenu.buttons.push(
 		new Button(
 			Point(),suites[i],
-			function () {
-				
-			}
+			whotMenu.buttonFunction(suites[i])
 		)
 	)
 }
@@ -363,7 +386,7 @@ mouse = {
 		this.hovering = null
 	},
 	imageUpdate: function () {
-		if (!this.image) this.image = 9
+		this.image = this.image || 9
 		poke(0x03ffb, this.image)
 		this.image = null // reset to default
 	}
@@ -402,6 +425,7 @@ function TIC() {
 	map(33, 0, 3, 4, drawButton.pos.x - 4, drawButton.pos.y - 6, 2)
 	drawButton.draw()
 	stackButton.draw()
+	font(stackButton.demand)
 	//draw all cards
 	for (p in players) {
 		for (i in players[p]) {
