@@ -53,24 +53,27 @@ function lerpPoint(a, b, t, round) {
 		lerp(a.x, b.x, t),
 		lerp(a.y, b.y, t)
 	)
-	if (round && distPoint(c,b) <= round) {
+	if (round && dist(c,b) <= round) {
 		return b
 	} else {
 		return c
 	}
 }
-function distPoint(a,b) {
+function dist(a,b) {
 	b= b || Point.new()
 	return Math.sqrt(((b.x-a.x)*(b.x-a.x))+((b.y-a.y)*(b.y-a.y)))
+}
+function angle(from,to) {
+	Math.pi - Math.atan2(to.x-from.x,to.y-from.y)
 }
 function rotatePoint(point, angle, origin) {
 	return addPoint(
 		Point(
-			(point.x-origin.x)*math.cos(angle)
-			- (point.y-origin.y)*math.sin(angle)
+			(point.x-origin.x)*Math.cos(angle)
+			- (point.y-origin.y)*Math.sin(angle)
 		,
-			(point.y-origin.y)*math.cos(angle)
-			+ (point.x-origin.x)*math.sin(angle)
+			(point.y-origin.y)*Math.cos(angle)
+			+ (point.x-origin.x)*Math.sin(angle)
 		),
 		origin
 	)
@@ -83,11 +86,14 @@ function Button(pos, label, callback) {
 	this.siz = Point(8 * 2, 8 * 2)
 	this.pressed = false
 	this.update = function () {
+
+		hover = Collision.pointRect(mouse.pos, this) && !mouse.hovering
+		if (hover) mouse.image = 8
+		
 		this.justPressed = (
-			this.pressed == false 
-			&& Collision.pointRect(mouse.pos, this)
+			this.pressed == false
 			&& mouse.l
-			&& !mouse.hovering
+			&& hover
 		)
 
 		if (this.justPressed) {
@@ -101,7 +107,6 @@ function Button(pos, label, callback) {
 		}
 	}
 	this.draw = function () {
-		if (Collision.pointRect(mouse.pos, this) && !mouse.hovering) mouse.image = 8
 		spr(this.pressed ? 94 : 92, this.pos.x, this.pos.y, 2, 1, 0, 0, 2, 2)
 		pal(1, 0)
 		font(this.label, this.pos.x + 4, this.pos.y + (this.pressed ? 6 : 4))
@@ -117,17 +122,18 @@ function Card() {
 	this.update = function (index, active, hoverDir) {
 		if (active ==  false) {
 			this.pos = lerpPoint(this.pos, this.targetPos, 0.07,2)
-			
 			return
 		}
 		if (
 			Collision.pointRect(mouse.pos, this) // if the mouse is over
-			&& (mouse.hovering == null || mouse.hovering == index)
+			&& (mouse.hovering == null || mouse.hovering === index)
 		) {
 			mouse.hovering = index
+			mouse.image = 11
 
 			if (mouse.l) {
 				this.pos = addPoint(mouse.pos, Point(-8, -8))
+				mouse.image = 10
 			} else {
 				if (Collision.rectRect(this, stackButton)) {
 					stackButton.add(this.value)
@@ -192,7 +198,7 @@ function createPile() {
 	return pile
 }
 
-Collision = {
+const Collision = {
 	pointRect: function (point, rect) {
 		rect.edg = addPoint(rect.pos, rect.siz)
 		return (
@@ -254,6 +260,8 @@ stackButton = {
 	pos: Point((width * (2 / 3)) - 4, (height / 3) + 15),
 	siz: Point(8 * 3, 8 * 4),
 	add: function (value) {
+		if (whotMenu.active) return
+		
 		if (value[0] == "W") {
 			whotMenu.active = true
 			removeValue = value // value of card to be removed
@@ -267,11 +275,14 @@ stackButton = {
 	},
 	update: function () {
 		if (removeValue) {
+			found = false
 			for (i = 0; i < players[currentPlayer].length; i++) {
 				if (
-					(players[currentPlayer][i].value[0] == removeValue[0]) 
+					!found
+					&& (players[currentPlayer][i].value[0] == removeValue[0]) 
 					&& (players[currentPlayer][i].value[1] == removeValue[1])
 				) {
+					found = true
 					players[currentPlayer] = remove(players[currentPlayer], i)
 				}
 			}
@@ -289,13 +300,45 @@ stackButton = {
 
 whotMenu = {
 	pos : Point(width / 3, (height / 3) + 6),
+	titleBar : {
+		pos : Point(width / 3, (height / 3) + 6),
+		siz : Point(8*12,8),
+		held : false
+	},
 	active : false,
+	buttons : [],
 	update : function () {
-		
+		this.titleBar.pos = this.pos
+		if (Collision.pointRect(mouse.pos,this.titleBar)) {
+			mouse.image = 11
+			this.titleBar.held = mouse.l
+		}
+		if (this.titleBar.held) {
+			this.pos = addPoint(mouse.pos,Point(-48,-4))
+			mouse.image = 10
+		}
+
+		for (i in this.buttons) {
+			this.buttons[i].pos = addPoint(this.pos,Point(6 + 17*i,12))
+			this.buttons[i].update()
+		}
 	},
 	draw : function () {
-		map(31,5,11,6,this.pos.x,this.pos.y,2)
+		map(31,5,12,6,this.pos.x,this.pos.y)
+		for (i in this.buttons) {
+			this.buttons[i].draw()
+		}
 	}
+}
+for (i in suites) {
+	whotMenu.buttons.push(
+		new Button(
+			Point(),suites[i],
+			function () {
+				
+			}
+		)
+	)
 }
 
 
@@ -320,7 +363,7 @@ mouse = {
 		this.hovering = null
 	},
 	imageUpdate: function () {
-		if (!this.image) this.image = (this.hovering && this.l) ? 10 : 9
+		if (!this.image) this.image = 9
 		poke(0x03ffb, this.image)
 		this.image = null // reset to default
 	}
@@ -329,18 +372,26 @@ mouse = {
 function TIC() {
 	cls(2)
 	poke(0x03FF8, 2)
-	map() //draw the board background
+	if (whotMenu.active)
+		map(0,17) //draw the board background
+	else
+		map() //draw the board background
+
 
 	mouse.update()
 	// update all cards
 	for (p in players) {
 		for (i in players[p]) {
-			players[p][i].update(i, p==currentPlayer, p == 0)
+			players[p][i].update(i,whotMenu.active ? false : p==currentPlayer, p == 0)
 		}
 	}
-	if (whotMenu.active) whotMenu.update()
-	drawButton.update()
+	if (whotMenu.active) 
+		whotMenu.update()
+	else {
+		drawButton.update()
+	}
 	stackButton.update()
+
 	alignCards(players[0], Point(32, 101))
 	alignCards(players[1], Point(94, 5))
 	if (changePlayer) {
