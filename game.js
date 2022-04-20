@@ -79,10 +79,11 @@ function rotatePoint(point, angle, origin) {
 	)
 }
 
-function Button(pos, label, callback) {
+function Button(pos, label, callback, onRelease) {
 	this.pos = pos
 	this.label = label
 	this.callback = callback // function which is called when pressed
+	this.onRelease = onRelease || function(){} // function called when released
 	this.siz = Point(8 * 2, 8 * 2)
 	this.pressed = false
 	this.update = function () {
@@ -101,7 +102,10 @@ function Button(pos, label, callback) {
 
 		if (this.pressed) {
 			mouse.image = 7
-			if (mouse.l == false) this.pressed = false
+			if (mouse.l == false) {
+				this.onRelease()
+				this.pressed = false
+			}
 		}
 	}
 	this.draw = function () {
@@ -264,6 +268,7 @@ stackButton = {
 		
 		if (value[0] == "W") {
 			whotMenu.active = true
+			stack.push(value)
 			this.demand = ""
 			removeValue = value // value of card to be removed
 			return
@@ -298,7 +303,13 @@ stackButton = {
 	},
 	draw: function () {
 		map(30, 0, 3, 4, this.pos.x, this.pos.y, 2)
-		font(
+		if (this.demand)
+			font(
+				this.demand,
+				this.pos.x + 5, this.pos.y + 4,
+				undefined,undefined,undefined,false,2
+			)
+		else font(
 			stack[stack.length - 1][0] + "\n" + stack[stack.length - 1][1],
 			this.pos.x + 5, this.pos.y + 4
 		)
@@ -319,10 +330,6 @@ whotMenu = {
 			stackButton.demand = suite
 		}
 	},
-	closeButton : new Button(Point(),"X",function () {
-		whotMenu.active = false
-		changePlayer = true
-	}),
 	update : function () {
 		this.titleBar.pos = this.pos
 		if (Collision.pointRect(mouse.pos,this.titleBar)) {
@@ -334,35 +341,52 @@ whotMenu = {
 			mouse.image = 10
 		}
 
-		if (stackButton.demand) {
-			this.closeButton.pos = addPoint(this.pos,Point(23,12))
-			this.closeButton.update()
-		} else {
-			for (i in this.buttons) {
-				this.buttons[i].pos = addPoint(this.pos,Point(6 + 17*i,12))
-				this.buttons[i].update()
-			}
+		for (i in this.buttons) {
+			this.buttons[i].pos = addPoint(this.pos,Point(6 + 17*i,12))
+			this.buttons[i].update()
 		}
 	},
 	draw : function () {
 		map(31,5,12,6,this.pos.x,this.pos.y)
-		if (stackButton.demand) {
-			this.closeButton.draw()
-		} else {
-			for (i in this.buttons) {
-				this.buttons[i].draw()
-			}
+		for (i in this.buttons) {
+			this.buttons[i].draw()
 		}
+		font(
+			stackButton.demand ? "chosen" :"Chose a suite",
+			this.pos.x + 4, this.pos.y + 8*4
+		)
 	}
 }
 for (i in suites) {
 	whotMenu.buttons.push(
 		new Button(
 			Point(),suites[i],
-			whotMenu.buttonFunction(suites[i])
+			whotMenu.buttonFunction(suites[i]),
+			function(){
+				whotMenu.active = false
+				changePlayer = true
+			}
 		)
 	)
 }
+
+mainMenu = {
+	pos : Point(width/2 - 8*6,height/2 - 8*7),
+	active : false,
+	draw : function () {
+		map(44,5,12,14,this.pos.x,this.pos.y)
+	},
+	update : function () {
+		
+	}
+}
+menuButton = new Button(
+	Point(4,4),
+	"=",
+	function () {
+		mainMenu.active = !mainMenu.active
+	}
+)
 
 
 
@@ -395,22 +419,26 @@ mouse = {
 function TIC() {
 	cls(2)
 	poke(0x03FF8, 2)
-	if (whotMenu.active)
+	if (whotMenu.active || mainMenu.active) {
 		map(0,17) //draw the board background
-	else
+	} else {
 		map() //draw the board background
-
+	}
 
 	mouse.update()
 	// update all cards
 	for (p in players) {
 		for (i in players[p]) {
-			players[p][i].update(i,whotMenu.active ? false : p==currentPlayer, p == 0)
+			players[p][i].update(i,(whotMenu.active || mainMenu.active) ? false : p==currentPlayer, p == 0)
 		}
 	}
-	if (whotMenu.active) 
+	
+	menuButton.update()
+	if (mainMenu.active) {
+		mainMenu.update()
+	} else if (whotMenu.active) {
 		whotMenu.update()
-	else {
+	} else {
 		drawButton.update()
 	}
 	stackButton.update()
@@ -423,16 +451,17 @@ function TIC() {
 	}
 
 	map(33, 0, 3, 4, drawButton.pos.x - 4, drawButton.pos.y - 6, 2)
+	menuButton.draw()
 	drawButton.draw()
 	stackButton.draw()
-	font(stackButton.demand)
 	//draw all cards
 	for (p in players) {
 		for (i in players[p]) {
-			players[p][i].draw(p == currentPlayer)
+			players[p][i].draw(mainMenu.active ? false : p == currentPlayer)
 		}
 	}
 	if (whotMenu.active) whotMenu.draw()
+	if (mainMenu.active) mainMenu.draw()
 	mouse.imageUpdate()
 
 	t++
