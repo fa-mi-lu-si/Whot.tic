@@ -10,6 +10,8 @@ const height = 136
 
 function lerp(a, b, t) { return (1-t)*a + t*b }
 function pal(c0, c1) {
+	// swap two pallete colors
+	// pal() resets to default
 	if (c0 == undefined && c1 == undefined) {
 		for (i = 0; i <= 15; i++) {
 			poke4(0x3FF0*2 + i, i)
@@ -39,9 +41,6 @@ function Point(x, y) {
 		y: Number(y) || 0,
 	}
 }
-function PointDistAngle(dist, angle) {
-	rotatePoint(Point(0, -dist), angle, Point())
-}
 function addPoint(a, b) {
 	return Point(
 		a.x+b.x,
@@ -53,7 +52,7 @@ function lerpPoint(a, b, t, round) {
 		lerp(a.x, b.x, t),
 		lerp(a.y, b.y, t)
 	)
-	if (round && dist(c,b) <= round) {
+	if (dist(c,b) <= (round || 0)) {
 		return b
 	} else {
 		return c
@@ -63,21 +62,7 @@ function dist(a, b) {
 	b = b || Point.new()
 	return Math.sqrt(((b.x-a.x)*(b.x-a.x))+((b.y-a.y)*(b.y-a.y)))
 }
-function angle(from, to) {
-	Math.pi - Math.atan2(to.x-from.x,to.y-from.y)
-}
-function rotatePoint(point, angle, origin) {
-	return addPoint(
-		Point(
-			(point.x-origin.x)*Math.cos(angle)
-			-(point.y-origin.y)*Math.sin(angle)
-		,
-			(point.y-origin.y)*Math.cos(angle)
-			+(point.x-origin.x)*Math.sin(angle)
-		),
-		origin
-	)
-}
+
 
 function Button(pos, label, callback, onRelease) {
 	this.pos = pos
@@ -246,10 +231,11 @@ stackButton = {
 		if (whotMenu.active) return
 		
 		if (value[0] == "W") {
-			whotMenu.active = true
 			stack.push(value)
 			this.demand = ""
 			removeValue = value // value of card to be removed
+			// only open the whot menu if this isn't the last card
+			if (players[currentPlayer].length > 1) whotMenu.active = true
 			return
 		}
 
@@ -275,15 +261,14 @@ stackButton = {
 				) {
 					found = true
 					players[currentPlayer] = remove(players[currentPlayer], i)
+					if (players[currentPlayer].length == 0) {
+						mainMenu.active = true
+						mainMenu.win = currentPlayer // show the win screen
+					}
 				}
 			}
 		}
 		removeValue = null // reset the value for the next frame
-
-		if (players[currentPlayer].length == 0) {
-			mainMenu.active = true
-			mainMenu.win = currentPlayer // show the win screen
-		}
 	},
 	draw: function () {
 		map(30, 0, 3, 4, this.pos.x, this.pos.y, 2)
@@ -360,27 +345,31 @@ for (i in suits) {
 mainMenu = {
 	pos : Point(width/2 - 8*6,height/2 - 8*7),
 	active : true,
-	win : -1, // the index of the winning player
-	startNewButton : 
-		new Button(
-			Point(width/2 - 8*5, 8*10 + height/2 - 8*7)
-			,"New game",
-			function () {
-				initialiseGame()
-			},
-			function () {
-				mainMenu.active = false
-				mainMenu.win = null
-			}
-		),
+	win : "start", // the index of the winning player or a string state
+	startNewButton : new Button(
+		Point(width/2 - 8*6 + 15, 8*4 + height/2)
+		,"New game",
+		function () {
+			initialiseGame()
+		},
+		function () {
+			mainMenu.active = false
+			mainMenu.win = null
+		}
+	),
 	update : function () {
 		this.startNewButton.update()
 	},
 	draw : function () {
 		map(44,5,12,14,this.pos.x,this.pos.y)
-		if (this.win !== null) {
+		if (this.win !== null && this.win >= 0) {
 			font(
 				"Player " + this.win + "\n wins !",
+				this.pos.x + 21,this.pos.y + 12
+			)
+		} else if (this.win == "start") {
+			font(
+				"WHOT \n~~~~~~",
 				this.pos.x + 21,this.pos.y + 12
 			)
 		} else {
@@ -489,8 +478,8 @@ function TIC() {
 	}
 	stackButton.update()
 
-	alignCards(players[0], Point(32, 101))
-	alignCards(players[1], Point(94, 5))
+	alignCards(players[0], Point(24, 101))
+	alignCards(players[1], Point(102, 5))
 	if (changePlayer) {
 		currentPlayer = (currentPlayer+1) % players.length
 		changePlayer = false
@@ -498,8 +487,10 @@ function TIC() {
 
 	map(33, 0, 3, 4, drawButton.pos.x - 4, drawButton.pos.y - 6, 2)
 	menuButton.draw()
-	drawButton.draw()
-	stackButton.draw()
+	if (!mainMenu.active) {
+		drawButton.draw()
+		stackButton.draw()
+	}
 	//draw all cards
 	for (p in players) {
 		for (i in players[p]) {
