@@ -28,7 +28,8 @@ function remove(array, index) {
 function shuffle(array) {
 	newArray = []
 	while (array.length>0) {
-		n = Math.floor(Math.random() * array.length) // random index
+		// random index
+		n = Math.floor(Math.random() * array.length)
 		newArray.push(array[n])
 		array = remove(array, n)
 	}
@@ -60,22 +61,28 @@ function lerpPoint(a, b, t, round) {
 }
 function dist(a, b) {
 	b = b || Point.new()
-	return Math.sqrt(((b.x-a.x)*(b.x-a.x))+((b.y-a.y)*(b.y-a.y)))
+	return Math.sqrt(
+		((b.x-a.x)*(b.x-a.x))
+		+((b.y-a.y)*(b.y-a.y))
+	)
 }
 
 
 function Button(pos, label, callback, onRelease) {
 	this.pos = pos
 	this.label = label
-	this.callback = callback // function which is called when pressed
-	this.onRelease = onRelease || function(){} // function called when released
-	this.width = font(label) + 6
+	this.callback = callback
+	this.onRelease = onRelease || function(){}
+	this.width = font(label) + 7
 	if (this.width < 11) this.width = 11
 	this.siz = Point(this.width, 8 * 2)
 	this.pressed = false
 	this.update = function () {
 
-		hover = Collision.pointRect(mouse.pos, this) && !mouse.hovering
+		hover = 
+			Collision.pointRect(mouse.pos, this)
+			&& !mouse.hovering
+
 		if (hover) mouse.image = 8
 
 		if (
@@ -98,14 +105,34 @@ function Button(pos, label, callback, onRelease) {
 		}
 	}
 	this.draw = function () {
-		spr(this.pressed ? 94 : 92, this.pos.x, this.pos.y, 2, 1, 0, 0, 1, 2)
+		spr(
+			this.pressed ? 94 : 92,
+			this.pos.x, this.pos.y,
+			2, 1, 0, 0, 1, 2
+		)
 		for (i = 1; i < Math.floor(this.width/8)-1; i++) {
-			spr(this.pressed ? 91 : 90, this.pos.x + i*8, this.pos.y, 2, 1, 0, 0, 1, 2)
+			spr(
+				this.pressed ? 91 : 90,
+				this.pos.x + i*8, this.pos.y,
+				2, 1, 0, 0, 1, 2
+			)
 		}
-		if (this.width > 16) spr(this.pressed ? 87 : 86, this.pos.x + (Math.floor(this.width/8)-1)*8, this.pos.y, 2, 1, 0, 0, 1, 2)
-		spr(this.pressed ? 95 : 93, this.pos.x + this.width - 8, this.pos.y, 2, 1, 0, 0, 1, 2)
+		if (this.width > 16)
+			spr(
+				this.pressed ? 87 : 86,
+				this.pos.x + (Math.floor(this.width/8)-1)*8, this.pos.y,
+				2, 1, 0, 0, 1, 2
+			)
+		spr(
+			this.pressed ? 95 : 93,
+			this.pos.x + this.width - 8, this.pos.y,
+			2, 1, 0, 0, 1, 2
+		)
 		pal(1, 0)
-		font(this.label, this.pos.x + 4, this.pos.y + (this.pressed ? 5 : 3))
+		font(
+			this.label,
+			this.pos.x + 4, this.pos.y + (this.pressed ? 5 : 3)
+		)
 		pal()
 	}
 }
@@ -115,7 +142,7 @@ function Card() {
 	this.targetPos = Point(0, 0)
 	this.siz = Point(8 * 3, 8 * 4)
 	this.value = pile.pop()
-	this.update = function (index, active, hoverDir) {
+	this.update = function (index, active, hoverUp) {
 		if (active ==  false) {
 			this.pos = lerpPoint(this.pos, this.targetPos, 0.07,2)
 			return
@@ -134,7 +161,9 @@ function Card() {
 				if (Collision.rectRect(this, stackButton)) {
 					stackButton.add(this.value)
 				}
-				this.pos.y = this.targetPos.y + (hoverDir ? -16 : 16)
+				if (this.pos.x == this.targetPos.x) {
+					this.pos.y = this.targetPos.y + (hoverUp ? -16 : 16)
+				}
 			}
 		} else {
 			this.pos = lerpPoint(this.pos, this.targetPos, 0.07,2)
@@ -151,7 +180,7 @@ function Card() {
 	}
 }
 function alignCards(array, pos) {
-	w = 96
+	w = 88
 	for (i in array) {
 		array[i].targetPos = Point(
 			pos.x + ((i / array.length) * w),
@@ -160,8 +189,10 @@ function alignCards(array, pos) {
 	}
 }
 
-const suits = ["O", "#", "+", "*", "^"] // each type of card
-const nums = [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14] // each possible card number
+// each type of card
+const suits = ["O", "#", "+", "*", "^"]
+// each possible card number
+const nums = [1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14]
 const notCards = [
 	["+", 4], ["#", 4],
 	["+", 8], ["#", 8],
@@ -178,7 +209,10 @@ function createPile() {
 			allowed = true
 			// chesk if card is not allowed
 			for (k = 0; k < notCards.length; k++) {
-				if (c[0] == notCards[k][0] && c[1] == notCards[k][1]) {
+				if (
+					c[0] == notCards[k][0]
+					&& c[1] == notCards[k][1]
+				) {
 					allowed = false
 				}
 			}
@@ -193,7 +227,7 @@ function createPile() {
 	return p
 }
 
-const Collision = {
+const Collision = { 
 	pointRect: function (point, rect) {
 		rect.edg = addPoint(rect.pos, rect.siz)
 		return (
@@ -216,11 +250,14 @@ const Collision = {
 }
 
 drawButton = new Button(
-	Point(width/3, height/3 + 21), "D",
-			function () {
-				players[currentPlayer].push(new Card())
-				changePlayer = true
-			}
+	Point(
+		width/3, height/3 + 21), "D",
+		function () {
+			players[currentPlayer].push(new Card())
+		},
+		function () {
+			changePlayer = true
+		}
 )
 
 stackButton = {
@@ -235,7 +272,10 @@ stackButton = {
 			this.demand = ""
 			removeValue = value // value of card to be removed
 			// only open the whot menu if this isn't the last card
-			if (players[currentPlayer].length > 1) whotMenu.active = true
+			if (players[currentPlayer].length > 1) {
+				whotMenu.active = true
+				whotMenu.pos = addPoint(playMenu.pos,Point(-8,0))
+			}
 			return
 		}
 
@@ -263,7 +303,8 @@ stackButton = {
 					players[currentPlayer] = remove(players[currentPlayer], i)
 					if (players[currentPlayer].length == 0) {
 						mainMenu.active = true
-						mainMenu.win = currentPlayer // show the win screen
+						// set the menu text
+						mainMenu.text = "Player " + currentPlayer
 					}
 				}
 			}
@@ -271,7 +312,6 @@ stackButton = {
 		removeValue = null // reset the value for the next frame
 	},
 	draw: function () {
-		map(30, 0, 3, 4, this.pos.x, this.pos.y, 2)
 		if (this.demand) {
 			font(
 				this.demand,
@@ -284,6 +324,33 @@ stackButton = {
 				this.pos.x + 5, this.pos.y + 4
 			)
 		}
+	}
+}
+
+playMenu = {
+	targetPos : Point(8*10,8*5),
+	pos : Point(8*10,height+1),
+	update : function () {
+		if (mainMenu.active) {
+			this.targetPos = Point(8*10,height+1)
+		} else {
+			this.targetPos = Point(
+				20 + (currentPlayer == 0 ? 0 : width/2),
+				8*5 + (currentPlayer == 0 ? -16 : 16)
+			)
+		}
+		this.pos = lerpPoint(this.pos,this.targetPos,0.2)
+
+		drawButton.pos = addPoint(this.pos,Point(8*1.5 ,8*2 +6))
+		stackButton.pos = addPoint(this.pos,Point(8*6,8*2))
+
+		if (!whotMenu.active) drawButton.update()
+		stackButton.update()
+	},
+	draw : function () {
+		map(31,18,10,7,this.pos.x,this.pos.y)
+		drawButton.draw()
+		stackButton.draw()
 	}
 }
 
@@ -305,9 +372,11 @@ whotMenu = {
 		this.titleBar.pos = this.pos
 		if (Collision.pointRect(mouse.pos,this.titleBar)) {
 			mouse.image = 11
+			if (this.titleBar.held && !mouse.l) mouse.hovering = false
 			this.titleBar.held = mouse.l
 		}
 		if (this.titleBar.held) {
+			mouse.hovering = true
 			this.pos = addPoint(mouse.pos,Point(-48,-4))
 			mouse.image = 10
 		}
@@ -339,13 +408,13 @@ for (i in suits) {
 			}
 		)
 	)
-	whotMenu.buttons[i].width = 16
+	whotMenu.buttons[i].width = 16 // makes them easier to align
 }
 
 mainMenu = {
 	pos : Point(width/2 - 8*6,height/2 - 8*7),
 	active : true,
-	win : "start", // the index of the winning player or a string state
+	text : "start", // shown at the top of the menu, null for default
 	startNewButton : new Button(
 		Point(width/2 - 8*6 + 15, 8*4 + height/2)
 		,"New game",
@@ -354,7 +423,7 @@ mainMenu = {
 		},
 		function () {
 			mainMenu.active = false
-			mainMenu.win = null
+			mainMenu.text = null
 		}
 	),
 	update : function () {
@@ -362,14 +431,14 @@ mainMenu = {
 	},
 	draw : function () {
 		map(44,5,12,14,this.pos.x,this.pos.y)
-		if (this.win !== null && this.win >= 0) {
-			font(
-				"Player " + this.win + "\n wins !",
-				this.pos.x + 21,this.pos.y + 12
-			)
-		} else if (this.win == "start") {
+		if (this.text == "start") {
 			font(
 				"WHOT \n~~~~~~",
+				this.pos.x + 21,this.pos.y + 12
+			)
+		} else if (this.text != null) {
+			font(
+				this.text + "\n wins !",
 				this.pos.x + 21,this.pos.y + 12
 			)
 		} else {
@@ -423,7 +492,7 @@ changePlayer = false
 removeValue = null
 
 function initialiseGame() {
-	currentPlayer = 0
+	currentPlayer = Math.round(Math.random())
 	changePlayer = false
 	removeValue = null
 
@@ -460,37 +529,45 @@ function TIC() {
 	}
 
 	mouse.update()
+
+	if (pile.length == 0 && mainMenu.text != "start") {
+		/* Move all cards, except the last
+		from the stack into the pile
+		then shuffle them*/
+		pile = shuffle(stack.slice(0,stack.length-1))
+		stack = [stack[stack.length-1]]
+	}
+
 	// update all cards
 	for (p in players) {
 		for (i in players[p]) {
-			players[p][i].update(i,(whotMenu.active || mainMenu.active) ? false : p==currentPlayer, p == 0)
+			players[p][i].update(
+				i,
+				(whotMenu.active || mainMenu.active) ? false : p==currentPlayer,
+				p == 0
+			)
 		}
 	}
 	
-	if (mainMenu.win === null) menuButton.update()
+	if (mainMenu.text === null) menuButton.update()
 
 	if (mainMenu.active) {
 		mainMenu.update()
+		
 	} else if (whotMenu.active) {
 		whotMenu.update()
-	} else {
-		drawButton.update()
 	}
-	stackButton.update()
+	playMenu.update()
 
-	alignCards(players[0], Point(24, 101))
-	alignCards(players[1], Point(102, 5))
+	alignCards(players[0], Point(8, 101))
+	alignCards(players[1], Point(126, 5))
 	if (changePlayer) {
 		currentPlayer = (currentPlayer+1) % players.length
 		changePlayer = false
 	}
 
-	map(33, 0, 3, 4, drawButton.pos.x - 4, drawButton.pos.y - 6, 2)
 	menuButton.draw()
-	if (!mainMenu.active) {
-		drawButton.draw()
-		stackButton.draw()
-	}
+	if (!whotMenu.active) playMenu.draw()
 	//draw all cards
 	for (p in players) {
 		for (i in players[p]) {
