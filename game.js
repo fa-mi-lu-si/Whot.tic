@@ -19,6 +19,21 @@ function pal(c0, c1) {
 	}
 	else poke4(0x3FF0*2 + c0, c1)
 }
+function loadPalette(string){
+	for(i=0;i<16;i++){
+		poke(0x03FC0+(i*3),parseInt(string.substr(i*6,2),16));
+		poke(0x03FC0+(i*3)+1,parseInt(string.substr((i*6)+2,2),16));
+		poke(0x03FC0+(i*3)+2,parseInt(string.substr((i*6)+4,2),16));
+	}
+}
+
+pallete = [
+	"00303bff7777ffce96f1f2da",
+	"7c3f58eb6b6ff9a875fff6d3",
+]
+for (i in pallete) {
+	pallete[i] += "0".repeat(72)
+}
 
 function remove(array, index) {
 	//returns the array with the value at index removed
@@ -73,11 +88,13 @@ function Button(pos, label, callback, onRelease) {
 	this.label = label
 	this.callback = callback
 	this.onRelease = onRelease || function(){}
-	this.width = font(label) + 7
-	if (this.width < 11) this.width = 11
-	this.siz = Point(this.width, 8 * 2)
 	this.pressed = false
-	this.update = function () {
+
+	this.width = Math.max(font(label) + 7,11)
+	this.siz = Point(this.width, 8 * 2)
+
+	// first parameter of update is passed into callback
+	this.update = function (params) {
 
 		hover = 
 			Collision.pointRect(mouse.pos, this)
@@ -90,7 +107,7 @@ function Button(pos, label, callback, onRelease) {
 			&& mouse.l
 			&& hover
 		) {
-			this.callback()
+			this.callback(params)
 			this.pressed = true
 		}
 
@@ -134,6 +151,28 @@ function Button(pos, label, callback, onRelease) {
 			this.pos.x + 4, this.pos.y + (this.pressed ? 5 : 3)
 		)
 		pal()
+	}
+}
+function Lever(pos, label) {
+	this.pos = pos
+	this.label = label
+	this.value = false
+	this.state = false // is the button on or off
+
+	this.bt = new Button(
+		pos,"",
+		function (lev) {
+			lev.state = !lev.state
+		}
+	)
+	this.bt.siz = Point(16,8)
+
+	this.update = function () {
+		this.bt.update(this)
+	}
+
+	this.draw = function () {
+		spr(this.state ? 84 : 100,this.pos.x,this.pos.y,1,1,0,0,2,1)
 	}
 }
 
@@ -454,6 +493,9 @@ menuButton = new Button(
 		mainMenu.active = !mainMenu.active
 	}
 )
+colorSwitch = new Lever(
+	Point(20,6),""
+)
 
 mouse = {
 	fetch: mouse,
@@ -522,6 +564,8 @@ function initialiseGame() {
 function TIC() {
 	cls(2)
 	poke(0x03FF8, 2)
+	loadPalette(pallete[colorSwitch.state?1:0])
+
 	if (whotMenu.active || mainMenu.active) {
 		map(0,17) //draw the secondary background
 	} else {
@@ -558,6 +602,7 @@ function TIC() {
 		whotMenu.update()
 	}
 	playMenu.update()
+	colorSwitch.update()
 
 	alignCards(players[0], Point(8, 101))
 	alignCards(players[1], Point(126, 5))
@@ -576,6 +621,7 @@ function TIC() {
 	}
 	if (whotMenu.active) whotMenu.draw()
 	if (mainMenu.active) mainMenu.draw()
+	colorSwitch.draw()
 	mouse.imageUpdate()
 
 	t++
