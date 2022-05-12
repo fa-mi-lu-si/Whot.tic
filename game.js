@@ -173,6 +173,7 @@ function Lever(pos, label) {
 
 	this.draw = function () {
 		spr(this.state ? 84 : 100,this.pos.x,this.pos.y,1,1,0,0,2,1)
+		font(this.label,this.pos.x+18,this.pos.y)
 	}
 }
 
@@ -455,8 +456,8 @@ mainMenu = {
 	active : true,
 	text : "start", // shown at the top of the menu, null for default
 	startNewButton : new Button(
-		Point(width/2 - 8*6 + 15, 8*4 + height/2)
-		,"New game",
+		Point(width/2 - 8*6 + 15, 8*4 + height/2),
+		"New game",
 		function () {
 			initialiseGame()
 		},
@@ -465,8 +466,13 @@ mainMenu = {
 			mainMenu.text = null
 		}
 	),
+	colorSwitch : new Lever(
+		Point(width/2 - 8*6 + 4,8*2.5 + height/2),
+		"Colour"
+	),
 	update : function () {
 		this.startNewButton.update()
+		this.colorSwitch.update()
 	},
 	draw : function () {
 		map(44,5,12,14,this.pos.x,this.pos.y)
@@ -484,6 +490,7 @@ mainMenu = {
 			// when the main menu is opened during gameplay
 		}
 		this.startNewButton.draw()
+		this.colorSwitch.draw()
 	}
 }
 menuButton = new Button(
@@ -492,9 +499,6 @@ menuButton = new Button(
 	function () {
 		mainMenu.active = !mainMenu.active
 	}
-)
-colorSwitch = new Lever(
-	Point(20,6),""
 )
 
 mouse = {
@@ -518,6 +522,7 @@ mouse = {
 	},
 	imageUpdate: function () {
 		this.image = this.image || 9
+		if (mainMenu.colorSwitch.state) this.image += 16
 		poke(0x03ffb, this.image)
 		this.image = null // reset to default
 	}
@@ -564,7 +569,7 @@ function initialiseGame() {
 function TIC() {
 	cls(2)
 	poke(0x03FF8, 2)
-	loadPalette(pallete[colorSwitch.state?1:0])
+	loadPalette(pallete[mainMenu.colorSwitch.state?1:0])
 
 	if (whotMenu.active || mainMenu.active) {
 		map(0,17) //draw the secondary background
@@ -602,7 +607,6 @@ function TIC() {
 		whotMenu.update()
 	}
 	playMenu.update()
-	colorSwitch.update()
 
 	alignCards(players[0], Point(8, 101))
 	alignCards(players[1], Point(126, 5))
@@ -621,7 +625,6 @@ function TIC() {
 	}
 	if (whotMenu.active) whotMenu.draw()
 	if (mainMenu.active) mainMenu.draw()
-	colorSwitch.draw()
 	mouse.imageUpdate()
 
 	t++
