@@ -453,6 +453,7 @@ for (i in suits) {
 
 mainMenu = {
 	pos : Point(width/2 - 8*6,height/2 - 8*7),
+	siz : Point(8*12,8*14),
 	active : true,
 	text : "start", // shown at the top of the menu, null for default
 	startNewButton : new Button(
@@ -473,6 +474,14 @@ mainMenu = {
 	update : function () {
 		this.startNewButton.update()
 		this.colorSwitch.update()
+		if (
+			!Collision.pointRect(mouse.pos,this)
+			&& !Collision.pointRect(mouse.pos,menuButton)
+			&& this.text === null
+			&& mouse.l
+		) {
+			this.active = false
+		}
 	},
 	draw : function () {
 		map(44,5,12,14,this.pos.x,this.pos.y)
