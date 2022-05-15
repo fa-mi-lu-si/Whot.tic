@@ -1,0 +1,5 @@
+{
+    "code-runner.executorMapByGlob": {
+        "game.js": "tic80 --fs . --cmd 'load game.tic & import code $fileName & run' --keepcmd",
+    }
+}
