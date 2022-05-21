@@ -83,12 +83,14 @@ function dist(a, b) {
 }
 
 
-function Button(pos, label, callback, onRelease) {
+function Button(pos, label, callback, onRelease,shortCutCode) {
 	this.pos = pos
 	this.label = label
 	this.callback = callback
 	this.onRelease = onRelease || function(){}
+	this.shortCutCode = shortCutCode || false
 	this.pressed = false
+	this.pressType = false
 
 	this.width = Math.max(font(label) + 7,11)
 	this.siz = Point(this.width, 8 * 2)
@@ -96,28 +98,41 @@ function Button(pos, label, callback, onRelease) {
 	// first parameter of update is passed into callback
 	this.update = function (params) {
 
+		if (!this.pressed) this.pressType = false
 		hover = 
 			Collision.pointRect(mouse.pos, this)
 			&& !mouse.hovering
 
 		if (hover) mouse.image = 8
 
-		if (
-			this.pressed == false
-			&& mouse.l
-			&& hover
-		) {
+		if (this.pressed == false && mouse.l && hover) {
 			this.callback(params)
 			this.pressed = true
+			this.pressType = "mouse"
+		}
+
+		if (this.shortCutCode && keyp(this.shortCutCode)) {
+			this.callback(params)
+			this.pressed = true
+			this.pressType = "key"
 		}
 
 		if (this.pressed) {
-			mouse.image = 7
-			mouse.hovering = true
-			if (mouse.l == false) {
-				this.onRelease()
-				this.pressed = false
-				mouse.hovering = false
+			if (this.pressType == "mouse") {
+				mouse.image = 7
+				mouse.hovering = true
+				if (mouse.l == false) {
+					this.onRelease()
+					this.pressed = false
+					this.pressType = false
+					mouse.hovering = false
+				}
+			} else if (this.pressType == "key") {
+				if (key(this.shortCutCode) == false) {
+					this.onRelease()
+					this.pressed = false
+					this.pressType = false
+				}
 			}
 		}
 	}
@@ -297,7 +312,8 @@ drawButton = new Button(
 		},
 		function () {
 			changePlayer = true
-		}
+		},
+		4
 )
 
 stackButton = {
@@ -384,7 +400,7 @@ playMenu = {
 		drawButton.pos = addPoint(this.pos,Point(8*1.5 ,8*2 +6))
 		stackButton.pos = addPoint(this.pos,Point(8*6,8*2))
 
-		if (!whotMenu.active) drawButton.update()
+		if (!(whotMenu.active||mainMenu.active)) drawButton.update()
 		stackButton.update()
 	},
 	draw : function () {
