@@ -43,6 +43,7 @@ function remove(array, index) {
 	return array.slice(0, index)
 		.concat(array.slice(index+1));
 }
+
 function shuffle(array) {
 	newArray = []
 	while (array.length>0) {
@@ -60,12 +61,14 @@ function Point(x, y) {
 		y: Number(y) || 0,
 	}
 }
+
 function addPoint(a, b) {
 	return Point(
 		a.x+b.x,
 		a.y+b.y
 	)
 }
+
 function lerpPoint(a, b, t, round) {
 	c = Point(
 		lerp(a.x, b.x, t),
@@ -77,6 +80,7 @@ function lerpPoint(a, b, t, round) {
 		return c
 	}
 }
+
 function dist(a, b) {
 	b = b || Point.new()
 	return Math.sqrt(
@@ -164,23 +168,27 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 			2, 1, 0, 0, 1, 2
 		)
 		pal(1, 0)
+		textWidth = font(label,0,137)
 		font(
 			this.label,
-			this.pos.x + 4, this.pos.y + (this.pressed ? 5 : 3)
+			this.pos.x + Math.ceil((this.width - textWidth)/2), this.pos.y + (this.pressed ? 5 : 3)
 		)
 		pal()
 	}
 }
-function Lever(pos, label) {
+
+function Lever(pos, label, callback) {
 	this.pos = pos
 	this.label = label
 	this.value = false
 	this.state = false // is the button on or off
+	this.callback = callback || function(){}
 
 	this.bt = new Button(
 		pos,"",
 		function (lev) {
 			lev.state = !lev.state
+			lev.callback()
 		}
 	)
 	this.bt.siz = Point(16,8)
@@ -237,6 +245,7 @@ function Card() {
 		)
 	}
 }
+
 function alignCards(array, pos) {
 	w = 88
 	for (i in array) {
@@ -265,7 +274,7 @@ function createPile() {
 		for (i in nums) {
 			c = [suit, nums[i]]
 			allowed = true
-			// chesk if card is not allowed
+			// check if card is not allowed
 			for (k = 0; k < notCards.length; k++) {
 				if (
 					c[0] == notCards[k][0]
@@ -486,13 +495,16 @@ mainMenu = {
 			mainMenu.text = null
 		}
 	),
-	colorSwitch : new Lever(
+	darkModeLever : new Lever(
 		Point(width/2 - 8*6 + 4,8*2.5 + height/2),
-		"Colour"
+		"Dark mode",
+		function () {
+			pmem(0,!pmem(0))
+		}
 	),
 	update : function () {
 		this.startNewButton.update()
-		this.colorSwitch.update()
+		this.darkModeLever.update()
 		if (
 			!Collision.pointRect(mouse.pos,this)
 			&& !Collision.pointRect(mouse.pos,menuButton)
@@ -518,7 +530,7 @@ mainMenu = {
 			// when the main menu is opened during gameplay
 		}
 		this.startNewButton.draw()
-		this.colorSwitch.draw()
+		this.darkModeLever.draw()
 	}
 }
 menuButton = new Button(
@@ -550,7 +562,7 @@ mouse = {
 	},
 	imageUpdate: function () {
 		this.image = this.image || 9
-		if (mainMenu.colorSwitch.state) this.image += 16
+		if (mainMenu.darkModeLever.state) this.image += 16
 		poke(0x03ffb, this.image)
 		this.image = null // reset to default
 	}
@@ -593,11 +605,13 @@ function initialiseGame() {
 	}
 }
 
+// remember the darkmode status
+mainMenu.darkModeLever.state = pmem(0)
 
 function TIC() {
 	cls(2)
 	poke(0x03FF8, 2)
-	loadPalette(pallete[mainMenu.colorSwitch.state?1:0])
+	loadPalette(pallete[mainMenu.darkModeLever.state?1:0])
 
 	if (whotMenu.active || mainMenu.active) {
 		map(0,17) //draw the secondary background
