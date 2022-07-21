@@ -1,7 +1,10 @@
-// title:  game title
-// author: game developer
-// desc:   short description
-// script: js
+// title:   WHOT
+// author:  51ftyone
+// desc:    An eights style card game
+// site:    https://51ftyone.itch.io
+// version: 0.1
+// script:  js
+// saveid: whot
 
 t = 0
 
