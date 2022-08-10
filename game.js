@@ -32,7 +32,7 @@ function loadPalette(string){
 
 pallete = [
 	"00303bff7777ffce96f1f2da",
-	"7c3f58eb6b6ff9a875fff6d3",
+	"211e20555568a0a08be9efec",
 ]
 for (i in pallete) {
 	pallete[i] += "0".repeat(72)
@@ -99,7 +99,7 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 	this.pressed = false
 	this.pressType = false
 
-	this.width = Math.max(font(label) + 7,11)
+	this.width = Math.max(font(label,240) + 7,11)
 	this.siz = Point(this.width, 8 * 2)
 
 	// first parameter of update is passed into callback
@@ -226,6 +226,8 @@ function Card() {
 			} else {
 				if (Collision.rectRect(this, stackButton)) {
 					stackButton.add(this.value)
+				} else if (stackButton.trying == this.value) {
+					stackButton.trying = ""
 				}
 				if (this.pos.x == this.targetPos.x) {
 					this.pos.y = this.targetPos.y + (hoverUp ? -16 : 16)
@@ -317,8 +319,7 @@ const Collision = {
 }
 
 drawButton = new Button(
-	Point(
-		width/3, height/3 + 21), "D",
+	Point(width/3, height/3 + 21), "D",
 		function () {
 			players[currentPlayer].push(new Card())
 		},
@@ -332,12 +333,16 @@ stackButton = {
 	pos: Point((width * (2 / 3)) - 4, (height / 3) + 15),
 	siz: Point(8 * 3, 8 * 4),
 	demand : "",
+	trying : "",
+	// the card which is over the button but not accepted
 	add: function (value) {
 		if (whotMenu.active) return
 		
 		if (value[0] == "W") {
+			sfx(0)
 			stack.push(value)
 			this.demand = ""
+			this.trying = ""
 			removeValue = value // value of card to be removed
 			// only open the whot menu if this isn't the last card
 			if (players[currentPlayer].length > 1) {
@@ -349,14 +354,23 @@ stackButton = {
 
 		topCard = stack[stack.length - 1]
 		if (
+			// compare the shape with the demanded shape if one exists
 			value[0] == (this.demand || topCard[0])
+			// if they aren't the same then try comparing with the number
+			// if no specific shape is demanded
 			|| (!this.demand && (value[1] == topCard[1]))
 		) {
+			sfx(0)
 			stack.push(value)
 			removeValue = value // value of card to be removed
 			this.demand = ""
+			this.trying = ""
 			changePlayer = true
+			return
 		}
+		// if the card does not match
+		if (this.trying != value) sfx(3)
+		this.trying = value
 	},
 	update: function () {
 		if (removeValue) {
@@ -496,8 +510,8 @@ mainMenu = {
 		}
 	),
 	darkModeLever : new Lever(
-		Point(width/2 - 8*6 + 4,8*2.5 + height/2),
-		"Dark mode",
+		Point(width/2 - 8*6 + 18,8*2.5 + height/2),
+		'',
 		function () {
 			pmem(0,!pmem(0))
 		}
@@ -505,6 +519,7 @@ mainMenu = {
 	update : function () {
 		this.startNewButton.update()
 		this.darkModeLever.update()
+		this.darkModeLever.label = this.darkModeLever.state ? "{" : "*"
 		if (
 			!Collision.pointRect(mouse.pos,this)
 			&& !Collision.pointRect(mouse.pos,menuButton)
@@ -518,8 +533,8 @@ mainMenu = {
 		map(44,5,12,14,this.pos.x,this.pos.y)
 		if (this.text == "start") {
 			font(
-				"WHOT \n~~~~~~",
-				this.pos.x + 21,this.pos.y + 12
+				"WHOT?\n~~~~~",
+				this.pos.x + 29,this.pos.y + 12
 			)
 		} else if (this.text != null) {
 			font(
@@ -529,6 +544,8 @@ mainMenu = {
 		} else {
 			// when the main menu is opened during gameplay
 		}
+
+
 		this.startNewButton.draw()
 		this.darkModeLever.draw()
 	}
