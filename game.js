@@ -113,6 +113,7 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 		if (hover) mouse.image = 8
 
 		if (this.pressed == false && mouse.l && hover) {
+			sfx(5)
 			this.callback(params)
 			this.pressed = true
 			this.pressType = "mouse"
@@ -322,6 +323,7 @@ drawButton = new Button(
 	Point(width/3, height/3 + 21), "D",
 		function () {
 			players[currentPlayer].push(new Card())
+			sfx(6)
 		},
 		function () {
 			changePlayer = true
@@ -448,6 +450,7 @@ whotMenu = {
 	buttonFunction : function (suit) {
 		return function () {
 			stackButton.demand = suit
+			sfx(1)
 		}
 	},
 	update : function () {
@@ -503,6 +506,7 @@ mainMenu = {
 		"New game",
 		function () {
 			initialiseGame()
+			sfx(1)
 		},
 		function () {
 			mainMenu.active = false
