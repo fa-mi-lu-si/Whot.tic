@@ -130,6 +130,7 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 				mouse.image = 7
 				mouse.hovering = true
 				if (mouse.l == false) {
+					sfx(10)
 					this.onRelease()
 					this.pressed = false
 					this.pressType = false
@@ -137,6 +138,7 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 				}
 			} else if (this.pressType == "key") {
 				if (key(this.shortCutCode) == false) {
+					sfx(10)
 					this.onRelease()
 					this.pressed = false
 					this.pressType = false
@@ -160,7 +162,8 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 		if (this.width > 16)
 			spr(
 				this.pressed ? 87 : 86,
-				this.pos.x + (Math.floor(this.width/8)-1)*8, this.pos.y,
+				this.pos.x + (Math.floor(this.width/8)-1)*8,
+				this.pos.y,
 				2, 1, 0, 0, 1, 2
 			)
 		spr(
@@ -172,7 +175,8 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 		textWidth = font(label,0,137)
 		font(
 			this.label,
-			this.pos.x + Math.ceil((this.width - textWidth)/2), this.pos.y + (this.pressed ? 5 : 3)
+			this.pos.x + Math.ceil((this.width - textWidth)/2),
+			this.pos.y + (this.pressed ? 5 : 3)
 		)
 		pal()
 	}
@@ -181,7 +185,6 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 function Lever(pos, label, callback) {
 	this.pos = pos
 	this.label = label
-	this.value = false
 	this.state = false // is the button on or off
 	this.callback = callback || function(){}
 
@@ -195,11 +198,16 @@ function Lever(pos, label, callback) {
 	this.bt.siz = Point(16,8)
 
 	this.update = function () {
+		this.bt.pos = this.pos
 		this.bt.update(this)
 	}
 
 	this.draw = function () {
-		spr(this.state ? 84 : 100,this.pos.x,this.pos.y,1,1,0,0,2,1)
+		spr(
+			this.state ? 84 : 100,
+			this.pos.x,this.pos.y,
+			1,1,0,0,2,1
+		)
 		font(this.label,this.pos.x+18,this.pos.y)
 	}
 }
@@ -211,11 +219,15 @@ function Card() {
 	this.value = pile.pop()
 	this.update = function (index, active, hoverUp) {
 		if (active ==  false) {
-			this.pos = lerpPoint(this.pos, this.targetPos, 0.07,2)
+			if (mainMenu.active && mainMenu.text == null) {
+				this.pos = lerpPoint(this.pos, Point(width/2,height/2), 0.07,2)
+			} else {
+				this.pos = lerpPoint(this.pos, this.targetPos, 0.07,2)
+			}
 			return
 		}
 		if (
-			Collision.pointRect(mouse.pos, this) // if the mouse is over
+			Collision.pointRect(mouse.pos, this)
 			&& (mouse.hovering == null || mouse.hovering === index)
 		) {
 			mouse.hovering = index
@@ -226,12 +238,15 @@ function Card() {
 				mouse.image = 10
 			} else {
 				if (Collision.rectRect(this, stackButton)) {
-					stackButton.add(this.value)
+					success = stackButton.add(this.value)
+					if (!success) {
+						this.pos.x = this.targetPos.x 
+					}
 				} else if (stackButton.trying == this.value) {
 					stackButton.trying = ""
 				}
 				if (this.pos.x == this.targetPos.x) {
-					this.pos.y = this.targetPos.y + (hoverUp ? -16 : 16)
+					this.pos.y = this.targetPos.y + (hoverUp? -16:16)
 				}
 			}
 		} else {
@@ -323,6 +338,10 @@ drawButton = new Button(
 	Point(width/3, height/3 + 21), "D",
 		function () {
 			players[currentPlayer].push(new Card())
+			drawButton.count += 1
+			if (drawButton.count > 3) {
+				noteCount = 49
+			}
 			sfx(6)
 		},
 		function () {
@@ -330,49 +349,58 @@ drawButton = new Button(
 		},
 		4
 )
+// how many times has the drawbutton been pressed in a row
+drawButton.count = 0
 
 stackButton = {
 	pos: Point((width * (2 / 3)) - 4, (height / 3) + 15),
 	siz: Point(8 * 3, 8 * 4),
 	demand : "",
-	trying : "",
-	// the card which is over the button but not accepted
+	trying : "",// card over the button but not accepted
 	add: function (value) {
 		if (whotMenu.active) return
 		
 		if (value[0] == "W") {
-			sfx(0)
+			sfx(4)
 			stack.push(value)
 			this.demand = ""
 			this.trying = ""
 			removeValue = value // value of card to be removed
+
 			// only open the whot menu if this isn't the last card
 			if (players[currentPlayer].length > 1) {
 				whotMenu.active = true
 				whotMenu.pos = addPoint(playMenu.pos,Point(-8,0))
 			}
-			return
+			return true
 		}
 
 		topCard = stack[stack.length - 1]
 		if (
-			// compare the shape with the demanded shape if one exists
+			/* compare the shape with the demanded shape
+			if one exists , otherwise the top card */
 			value[0] == (this.demand || topCard[0])
-			// if they aren't the same then try comparing with the number
-			// if no specific shape is demanded
+			/* if the shapes are different
+			try comparing the number , but only if
+			no specific shape has been demanded	
+			*/
 			|| (!this.demand && (value[1] == topCard[1]))
 		) {
-			sfx(0)
+			sfx(0,noteCount)
+			drawButton.count = 0 // reset the draw button count
+			noteCount++
+			if (noteCount > 60) noteCount = 49 
 			stack.push(value)
 			removeValue = value // value of card to be removed
 			this.demand = ""
 			this.trying = ""
 			changePlayer = true
-			return
+			return true
 		}
 		// if the card does not match
 		if (this.trying != value) sfx(3)
 		this.trying = value
+		return false
 	},
 	update: function () {
 		if (removeValue) {
@@ -387,6 +415,7 @@ stackButton = {
 					players[currentPlayer] = remove(players[currentPlayer], i)
 					if (players[currentPlayer].length == 0) {
 						mainMenu.active = true
+						sfx(1)
 						// set the menu text
 						mainMenu.text = "Player " + currentPlayer
 					}
@@ -404,13 +433,15 @@ stackButton = {
 			)
 		} else if (stack.length > 0) {
 			font(
-				stack[stack.length - 1][0] + "\n" + stack[stack.length - 1][1],
+				 stack[stack.length - 1][0] + "\n"
+				+stack[stack.length - 1][1],
 				this.pos.x + 5, this.pos.y + 4
 			)
 		}
 	}
 }
 
+noteCount = 48
 playMenu = {
 	targetPos : Point(8*10,8*5),
 	pos : Point(8*10,height+1),
@@ -450,7 +481,7 @@ whotMenu = {
 	buttonFunction : function (suit) {
 		return function () {
 			stackButton.demand = suit
-			sfx(1)
+			sfx(7)
 		}
 	},
 	update : function () {
@@ -477,7 +508,10 @@ whotMenu = {
 			this.buttons[i].draw()
 		}
 		font(
-			stackButton.demand ? stackButton.demand + " Chosen" :"Choose a suit",
+			stackButton.demand ?
+				stackButton.demand + " Chosen"
+			:
+				"Choose a suit",
 			this.pos.x + 4, this.pos.y + 12
 		)
 	}
@@ -502,27 +536,26 @@ mainMenu = {
 	active : true,
 	text : "start", // shown at the top of the menu, null for default
 	startNewButton : new Button(
-		Point(width/2 - 8*6 + 15, 8*4 + height/2),
+		Point(),
 		"New game",
 		function () {
 			initialiseGame()
-			sfx(1)
+			noteCount = 49
 		},
 		function () {
 			mainMenu.active = false
 			mainMenu.text = null
+			sfx(1)
 		}
 	),
 	darkModeLever : new Lever(
-		Point(width/2 - 8*6 + 18,8*2.5 + height/2),
+		Point(),
 		'',
 		function () {
 			pmem(0,!pmem(0))
 		}
 	),
 	update : function () {
-		this.startNewButton.update()
-		this.darkModeLever.update()
 		this.darkModeLever.label = this.darkModeLever.state ? "{" : "*"
 		if (
 			!Collision.pointRect(mouse.pos,this)
@@ -532,6 +565,17 @@ mainMenu = {
 		) {
 			this.active = false
 		}
+
+		if (this.active) {
+			this.pos = lerpPoint(this.pos, Point(width/2 - 8*6,height/2 - 8*7), 0.07,2)
+			this.startNewButton.update()
+			this.darkModeLever.update()
+		}  else {
+			this.pos = lerpPoint(this.pos, Point(width/2 - 8*6,height + 10), 0.07,2)
+		}
+
+		this.startNewButton.pos = addPoint(this.pos,Point(15,8*11))
+		this.darkModeLever.pos = addPoint(this.pos,Point(18,8*9.5))
 	},
 	draw : function () {
 		map(44,5,12,14,this.pos.x,this.pos.y)
@@ -548,7 +592,6 @@ mainMenu = {
 		} else {
 			// when the main menu is opened during gameplay
 		}
-
 
 		this.startNewButton.draw()
 		this.darkModeLever.draw()
@@ -663,10 +706,8 @@ function TIC() {
 	
 	if (mainMenu.text === null) menuButton.update()
 
-	if (mainMenu.active) {
-		mainMenu.update()
-		
-	} else if (whotMenu.active) {
+	mainMenu.update()
+	if (!mainMenu.active && whotMenu.active) {
 		whotMenu.update()
 	}
 	playMenu.update()
@@ -687,8 +728,7 @@ function TIC() {
 		}
 	}
 	if (whotMenu.active) whotMenu.draw()
-	if (mainMenu.active) mainMenu.draw()
+	mainMenu.draw()
 	mouse.imageUpdate()
-
 	t++
 }
