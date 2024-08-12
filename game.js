@@ -224,8 +224,15 @@ function Card() {
 			}
 			return
 		}
+
+		hoverRect = {
+			pos : addPoint(this.pos, Point(0, hoverUp ? 0 : -16)),
+			siz : addPoint(this.siz, Point(0, 16))
+		}
+		// rectb(hoverRect.pos.x,hoverRect.pos.y,hoverRect.siz.x,hoverRect.siz.y) // Visualise the new box
+		
 		if (
-			Collision.pointRect(mouse.pos, this)
+			Collision.pointRect(mouse.pos, hoverRect)
 			&& (mouse.hovering == null || mouse.hovering === index)
 		) {
 			mouse.hovering = index
