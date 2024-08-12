@@ -1,7 +1,7 @@
 // title:   WHOT
-// author:  51ftyone
+// author:  Samuel Familusi
 // desc:    An eights style card game
-// site:    https://51ftyone.itch.io
+// site:    https://fa-mi-lu-si.itch.io
 // version: 0.1
 // script:  js
 // saveid: whot
@@ -12,6 +12,7 @@ const width = 240
 const height = 136
 
 function lerp(a, b, t) { return (1-t)*a + t*b }
+
 function pal(c0, c1) {
 	// swap two pallete colors
 	// pal() resets to default
@@ -22,6 +23,7 @@ function pal(c0, c1) {
 	}
 	else poke4(0x3FF0*2 + c0, c1)
 }
+
 function loadPalette(string){
 	for(i=0;i<16;i++){
 		poke(0x03FC0+(i*3),parseInt(string.substr(i*6,2),16));
@@ -96,7 +98,6 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 	this.callback = callback
 	this.onRelease = onRelease || function(){}
 	this.shortCutCode = shortCutCode || false
-	this.pressed = false
 	this.pressType = false
 
 	this.width = Math.max(font(label,240) + 7,11)
@@ -105,78 +106,73 @@ function Button(pos, label, callback, onRelease,shortCutCode) {
 	// first parameter of update is passed into callback
 	this.update = function (params) {
 
-		if (!this.pressed) this.pressType = false
-		hover = 
+		hover =
 			Collision.pointRect(mouse.pos, this)
 			&& !mouse.hovering
 
 		if (hover) mouse.image = 8
 
-		if (this.pressed == false && mouse.l && hover) {
+		if (this.pressType == false && mouse.l && hover) {
 			sfx(5)
 			this.callback(params)
-			this.pressed = true
 			this.pressType = "mouse"
 		}
 
 		if (this.shortCutCode && keyp(this.shortCutCode)) {
+			sfx(5)
 			this.callback(params)
-			this.pressed = true
 			this.pressType = "key"
 		}
 
-		if (this.pressed) {
-			if (this.pressType == "mouse") {
-				mouse.image = 7
-				mouse.hovering = true
-				if (mouse.l == false) {
-					sfx(10)
-					this.onRelease()
-					this.pressed = false
-					this.pressType = false
-					mouse.hovering = false
-				}
-			} else if (this.pressType == "key") {
-				if (key(this.shortCutCode) == false) {
-					sfx(10)
-					this.onRelease()
-					this.pressed = false
-					this.pressType = false
-				}
+		if (this.pressType == "mouse") {
+			mouse.image = 7
+			mouse.hovering = true
+			if (mouse.l == false || !Collision.pointRect(mouse.pos, this)) {
+				sfx(10,"E-5",-1,2)
+				this.onRelease()
+				this.pressType = false
+				mouse.hovering = false
+			}
+		} else if (this.pressType == "key") {
+			if (key(this.shortCutCode) == false) {
+				sfx(10,"E-5",-1,2)
+				this.onRelease()
+				this.pressType = false
 			}
 		}
+
 	}
 	this.draw = function () {
 		spr(
-			this.pressed ? 94 : 92,
+			this.pressType ? 94 : 92,
 			this.pos.x, this.pos.y,
-			2, 1, 0, 0, 1, 2
+			4, 1, 0, 0, 1, 2
 		)
 		for (i = 1; i < Math.floor(this.width/8)-1; i++) {
 			spr(
-				this.pressed ? 91 : 90,
+				this.pressType ? 91 : 90,
 				this.pos.x + i*8, this.pos.y,
-				2, 1, 0, 0, 1, 2
+				4, 1, 0, 0, 1, 2
 			)
 		}
 		if (this.width > 16)
 			spr(
-				this.pressed ? 87 : 86,
+				this.pressType ? 87 : 86,
 				this.pos.x + (Math.floor(this.width/8)-1)*8,
 				this.pos.y,
-				2, 1, 0, 0, 1, 2
+				4, 1, 0, 0, 1, 2
 			)
 		spr(
-			this.pressed ? 95 : 93,
+			this.pressType ? 95 : 93,
 			this.pos.x + this.width - 8, this.pos.y,
-			2, 1, 0, 0, 1, 2
+			4, 1, 0, 0, 1, 2
 		)
 		pal(1, 0)
 		textWidth = font(label,0,137)
 		font(
 			this.label,
 			this.pos.x + Math.ceil((this.width - textWidth)/2),
-			this.pos.y + (this.pressed ? 5 : 3)
+			this.pos.y + (this.pressType ? 5 : 3)
 		)
 		pal()
 	}
@@ -193,6 +189,8 @@ function Lever(pos, label, callback) {
 		function (lev) {
 			lev.state = !lev.state
 			lev.callback()
+		},function () {
+			sfx(11,"E-5",-1,2)
 		}
 	)
 	this.bt.siz = Point(16,8)
@@ -206,7 +204,7 @@ function Lever(pos, label, callback) {
 		spr(
 			this.state ? 84 : 100,
 			this.pos.x,this.pos.y,
-			1,1,0,0,2,1
+			4,1,0,0,2,1
 		)
 		font(this.label,this.pos.x+18,this.pos.y)
 	}
@@ -240,7 +238,7 @@ function Card() {
 				if (Collision.rectRect(this, stackButton)) {
 					success = stackButton.add(this.value)
 					if (!success) {
-						this.pos.x = this.targetPos.x 
+						this.pos.x = this.targetPos.x
 					}
 				} else if (stackButton.trying == this.value) {
 					stackButton.trying = ""
@@ -255,7 +253,7 @@ function Card() {
 	}
 
 	this.draw = function (show) {
-		map(show ? 30 : 33, 0, 3, 4, this.pos.x, this.pos.y, 2)
+		map(show ? 30 : 33, 0, 3, 4, this.pos.x, this.pos.y, 4)
 		if (show) font(
 			this.value[0] + "\n" + this.value[1],
 			this.pos.x + 5, this.pos.y + 4,
@@ -312,7 +310,7 @@ function createPile() {
 	return p
 }
 
-const Collision = { 
+const Collision = {
 	pointRect: function (point, rect) {
 		rect.edg = addPoint(rect.pos, rect.siz)
 		return (
@@ -337,6 +335,11 @@ const Collision = {
 drawButton = new Button(
 	Point(width/3, height/3 + 21), "D",
 		function () {
+			
+			if (pile.length == 0) {
+				return
+			}
+
 			players[currentPlayer].push(new Card())
 			drawButton.count += 1
 			if (drawButton.count > 3) {
@@ -359,7 +362,7 @@ stackButton = {
 	trying : "",// card over the button but not accepted
 	add: function (value) {
 		if (whotMenu.active) return
-		
+
 		if (value[0] == "W") {
 			sfx(4)
 			stack.push(value)
@@ -375,21 +378,32 @@ stackButton = {
 			return true
 		}
 
+		if (stack.length == 0) {
+			sfx(0,noteCount)
+			drawButton.count = 0 // reset the draw button count
+			noteCount++
+			stack.push(value)
+			removeValue = value // value of card to be removed
+			this.demand = ""
+			this.trying = ""
+			changePlayer = true
+			return true
+		}
+
 		topCard = stack[stack.length - 1]
 		if (
 			/* compare the shape with the demanded shape
-			if one exists , otherwise the top card */
-			value[0] == (this.demand || topCard[0])
+			(if one exists), otherwise the top card */
+			(value[0] == (this.demand || topCard[0]))
 			/* if the shapes are different
 			try comparing the number , but only if
-			no specific shape has been demanded	
+			no specific shape has been demanded
 			*/
 			|| (!this.demand && (value[1] == topCard[1]))
 		) {
 			sfx(0,noteCount)
 			drawButton.count = 0 // reset the draw button count
 			noteCount++
-			if (noteCount > 60) noteCount = 49 
 			stack.push(value)
 			removeValue = value // value of card to be removed
 			this.demand = ""
@@ -408,7 +422,7 @@ stackButton = {
 			for (i = 0; i < players[currentPlayer].length; i++) {
 				if (
 					!found
-					&& (players[currentPlayer][i].value[0] == removeValue[0]) 
+					&& (players[currentPlayer][i].value[0] == removeValue[0])
 					&& (players[currentPlayer][i].value[1] == removeValue[1])
 				) {
 					found = true
@@ -428,7 +442,10 @@ stackButton = {
 		if (this.demand) {
 			font(
 				this.demand,
-				this.pos.x + 5, this.pos.y + 4,
+				// align the icon
+				this.pos.x + 5
+				+ (this.demand == "#" ? 2 : (this.demand == "+" ? 1 : 0)),
+				this.pos.y + 4,
 				undefined,undefined,undefined,false,2
 			)
 		} else if (stack.length > 0) {
@@ -436,6 +453,12 @@ stackButton = {
 				 stack[stack.length - 1][0] + "\n"
 				+stack[stack.length - 1][1],
 				this.pos.x + 5, this.pos.y + 4
+			)
+		} else {
+			font(
+				"?",
+				this.pos.x + 5, this.pos.y + 4,
+				undefined,undefined,undefined,false,2
 			)
 		}
 	}
@@ -463,7 +486,7 @@ playMenu = {
 		stackButton.update()
 	},
 	draw : function () {
-		map(31,18,10,7,this.pos.x,this.pos.y)
+		map(31,18,10,7,this.pos.x,this.pos.y,4)
 		drawButton.draw()
 		stackButton.draw()
 	}
@@ -485,25 +508,17 @@ whotMenu = {
 		}
 	},
 	update : function () {
-		this.titleBar.pos = this.pos
-		if (Collision.pointRect(mouse.pos,this.titleBar)) {
-			mouse.image = 11
-			if (this.titleBar.held && !mouse.l) mouse.hovering = false
-			this.titleBar.held = mouse.l
-		}
-		if (this.titleBar.held) {
-			mouse.hovering = true
-			this.pos = addPoint(mouse.pos,Point(-48,-4))
-			mouse.image = 10
-		}
+		this.pos = Point(playMenu.pos.x - 8, playMenu.pos.y)
 
 		for (i in this.buttons) {
 			this.buttons[i].pos = addPoint(this.pos,Point(4 + 18*i,8*3))
-			this.buttons[i].update()
+			if (!mainMenu.active && whotMenu.active) {
+				this.buttons[i].update()
+			}
 		}
 	},
 	draw : function () {
-		map(31,5,12,6,this.pos.x,this.pos.y)
+		map(31,5,12,6,this.pos.x,this.pos.y,4)
 		for (i in this.buttons) {
 			this.buttons[i].draw()
 		}
@@ -524,10 +539,11 @@ for (i in suits) {
 			function(){
 				whotMenu.active = false
 				changePlayer = true
+				sfx(11,"E-5",-1,2)
 			}
 		)
 	)
-	whotMenu.buttons[i].width = 16 // makes them easier to align
+	whotMenu.buttons[i].width = 17 // makes them easier to align
 }
 
 mainMenu = {
@@ -541,12 +557,13 @@ mainMenu = {
 		function () {
 			initialiseGame()
 			noteCount = 49
+			sfx(1)
 		},
 		function () {
 			mainMenu.active = false
 			mainMenu.text = null
-			sfx(1)
-		}
+		},
+		48
 	),
 	darkModeLever : new Lever(
 		Point(),
@@ -578,7 +595,7 @@ mainMenu = {
 		this.darkModeLever.pos = addPoint(this.pos,Point(18,8*9.5))
 	},
 	draw : function () {
-		map(44,5,12,14,this.pos.x,this.pos.y)
+		map(44,5,12,14,this.pos.x,this.pos.y,4)
 		if (this.text == "start") {
 			font(
 				"WHOT?\n~~~~~",
@@ -646,26 +663,21 @@ function initialiseGame() {
 	currentPlayer = Math.round(Math.random())
 	changePlayer = false
 	removeValue = null
+	stackButton.demand = ""
+	whotMenu.active = false
 
 	pile = createPile() // fill the pile with shuffled cards
-	stack = [
-		pile.pop() // add a card to start the stack
-	]
+	stack = []
 	players = [
 		[],
 		[]
 	]
-	
+
 	// give each player 6 cards
 	for (j in players) {
 		for (i = 0; i < 6; i++) {
 			players[j].push(new Card())
 		}
-	}
-	// the stack can't start with whot
-	while (stack[0][0] == "W") {
-		pile.unshift(stack.pop())
-		stack.push(pile.pop())
 	}
 }
 
@@ -703,13 +715,11 @@ function TIC() {
 			)
 		}
 	}
-	
+
 	if (mainMenu.text === null) menuButton.update()
 
 	mainMenu.update()
-	if (!mainMenu.active && whotMenu.active) {
-		whotMenu.update()
-	}
+	whotMenu.update()
 	playMenu.update()
 
 	alignCards(players[0], Point(8, 101))
