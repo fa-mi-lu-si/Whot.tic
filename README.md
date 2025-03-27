@@ -1,5 +1,7 @@
 # WHOT.tic
 
+![GIF showing gameplay](./assets/video1.gif)
+
 The card game [WHOT](https://en.wikipedia.org/wiki/Whot!) written in tic80
 
 [Play](https://fa-mi-lu-si.itch.io/whot-tic)

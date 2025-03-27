@@ -217,7 +217,7 @@ function Card() {
 	this.value = pile.pop()
 	this.update = function (index, active, hoverUp) {
 		if (active ==  false) {
-			if (mainMenu.active && mainMenu.text == null) {
+			if ((mainMenu.active || aboutMenu.active) && mainMenu.text == null) {
 				this.pos = lerpPoint(this.pos, Point(width/2,height/2), 0.07,2)
 			} else {
 				this.pos = lerpPoint(this.pos, this.targetPos, 0.07,2)
@@ -436,6 +436,7 @@ stackButton = {
 					players[currentPlayer] = remove(players[currentPlayer], i)
 					if (players[currentPlayer].length == 0) {
 						mainMenu.active = true
+						recentMenu = "mainMenu"
 						sfx(1)
 						// set the menu text
 						mainMenu.text = "Player " + currentPlayer
@@ -476,7 +477,7 @@ playMenu = {
 	targetPos : Point(8*10,8*5),
 	pos : Point(8*10,height+1),
 	update : function () {
-		if (mainMenu.active) {
+		if (mainMenu.active || aboutMenu.active) {
 			this.targetPos = Point(8*10,height+1)
 		} else {
 			this.targetPos = Point(
@@ -489,7 +490,7 @@ playMenu = {
 		drawButton.pos = addPoint(this.pos,Point(8*1.5 ,8*2 +6))
 		stackButton.pos = addPoint(this.pos,Point(8*6,8*2))
 
-		if (!(whotMenu.active||mainMenu.active)) drawButton.update()
+		if (!(whotMenu.active||mainMenu.active || aboutMenu.active)) drawButton.update()
 		stackButton.update()
 	},
 	draw : function () {
@@ -519,7 +520,7 @@ whotMenu = {
 
 		for (i in this.buttons) {
 			this.buttons[i].pos = addPoint(this.pos,Point(4 + 18*i,8*3))
-			if (!mainMenu.active && whotMenu.active) {
+			if (!(mainMenu.active || aboutMenu.active) && whotMenu.active) {
 				this.buttons[i].update()
 			}
 		}
@@ -553,6 +554,55 @@ for (i in suits) {
 	whotMenu.buttons[i].width = 17 // makes them easier to align
 }
 
+
+recentMenu = "aboutMenu"
+/*
+A menu to show some info about the game
+author (show the image)
+I made it in tic80 etc (js logo, keyboard, laptop etc)
+*/
+aboutMenu = {
+	pos : Point(width/2 - 8*6,height + 10),
+	siz : Point(8*12,8*12),
+	active : false,
+	closeButton : new Button(
+		Point(),
+		"close",
+		function () {
+			// 
+		},
+		function () {
+			aboutMenu.active = false
+			mainMenu.active = true
+			recentMenu = "mainMenu"
+		}
+	),
+	update : function () {
+		if (
+			!Collision.pointRect(mouse.pos,this)
+			&& !Collision.pointRect(mouse.pos,menuButton)
+			&& this.active
+			&& mouse.l
+		) {
+			this.active = false
+			mainMenu.active = true
+			recentMenu = "mainMenu"
+		}
+
+		if (this.active) {
+			this.pos = lerpPoint(this.pos, Point(width/2 - 8*6,height/2 - 8*6), 0.07,2)
+			this.closeButton.update()
+		} else {
+			this.pos = lerpPoint(this.pos, Point(width/2 - 8*6,height + 10), 0.07,2)
+		}
+		this.closeButton.pos = addPoint(this.pos,Point(28,8*9))
+	},
+	draw : function () {
+		map(58,5,12,12,this.pos.x,this.pos.y,4)
+		this.closeButton.draw()
+	}
+}
+
 mainMenu = {
 	pos : Point(width/2 - 8*6,height/2 - 8*7),
 	siz : Point(8*12,8*14),
@@ -579,8 +629,20 @@ mainMenu = {
 			pmem(0,!pmem(0))
 		}
 	),
+	aboutButton : new Button(
+		Point(),
+		"?",
+		function () {
+			
+		},
+		function () {
+			mainMenu.active = false
+			aboutMenu.active = true
+			recentMenu = "aboutMenu"
+		}
+	),
 	update : function () {
-		this.darkModeLever.label = this.darkModeLever.state ? "{" : "*"
+		this.darkModeLever.label = this.darkModeLever.state ? "{ dark" : "* light"
 		if (
 			!Collision.pointRect(mouse.pos,this)
 			&& !Collision.pointRect(mouse.pos,menuButton)
@@ -592,12 +654,13 @@ mainMenu = {
 
 		if (this.active) {
 			this.pos = lerpPoint(this.pos, Point(width/2 - 8*6,height/2 - 8*7), 0.07,2)
+			this.aboutButton.update()
 			this.startNewButton.update()
 			this.darkModeLever.update()
 		}  else {
 			this.pos = lerpPoint(this.pos, Point(width/2 - 8*6,height + 10), 0.07,2)
 		}
-
+		this.aboutButton.pos = addPoint(this.pos,Point(18,8*7))
 		this.startNewButton.pos = addPoint(this.pos,Point(15,8*11))
 		this.darkModeLever.pos = addPoint(this.pos,Point(18,8*9.5))
 	},
@@ -616,7 +679,7 @@ mainMenu = {
 		} else {
 			// when the main menu is opened during gameplay
 		}
-
+		this.aboutButton.draw()
 		this.startNewButton.draw()
 		this.darkModeLever.draw()
 	}
@@ -625,6 +688,7 @@ menuButton = new Button(
 	Point(4,4),
 	"=",
 	function () {
+		if (aboutMenu.active) {aboutMenu.active = false}
 		mainMenu.active = !mainMenu.active
 	}
 )
@@ -696,7 +760,7 @@ function TIC() {
 	poke(0x03FF8, 2)
 	loadPalette(pallete[mainMenu.darkModeLever.state?1:0])
 
-	if (whotMenu.active || mainMenu.active) {
+	if (whotMenu.active || mainMenu.active || aboutMenu.active) {
 		map(0,17) //draw the secondary background
 	} else {
 		map() //draw the board background
@@ -717,7 +781,7 @@ function TIC() {
 		for (i in players[p]) {
 			players[p][i].update(
 				i,
-				(whotMenu.active || mainMenu.active) ? false : p==currentPlayer,
+				(whotMenu.active || mainMenu.active || aboutMenu.active) ? false : p==currentPlayer,
 				p == 0
 			)
 		}
@@ -726,6 +790,7 @@ function TIC() {
 	if (mainMenu.text === null) menuButton.update()
 
 	mainMenu.update()
+	aboutMenu.update()
 	whotMenu.update()
 	playMenu.update()
 
@@ -741,11 +806,18 @@ function TIC() {
 	//draw all cards
 	for (p in players) {
 		for (i in players[p]) {
-			players[p][i].draw(mainMenu.active ? false : p == currentPlayer)
+			players[p][i].draw((mainMenu.active || aboutMenu.active) ? false : p == currentPlayer)
 		}
 	}
 	if (whotMenu.active) whotMenu.draw()
-	mainMenu.draw()
+	if (recentMenu == "mainMenu") {
+		aboutMenu.draw()
+		mainMenu.draw()
+	} else if (recentMenu == "aboutMenu") {
+		mainMenu.draw()
+		aboutMenu.draw()
+	}
+
 	mouse.imageUpdate()
 	t++
 }
